@@ -1,3 +1,127 @@
+# CloudArbiter — Cloud Resource Allocation Engine
+
+Welcome to CloudArbiter — an event-sourced resource allocation and conflict-resolution engine with a built-in dashboard, explainability layer, and a chaos test lab for load and conflict simulation.
+
+**Project Brief**
+- **Purpose:** Deterministic, auditable allocation of cloud resources using event-sourcing. Conflicts between allocation requests are resolved by a conflict resolver; every decision is persisted to an audit log for replay and inspection.
+- **Key ideas:** immutable event log, deterministic replay, explainability for decisions, and tools for stress-testing the ingestion pipeline.
+
+**Repository layout**
+- [app/main.py](app/main.py) — FastAPI application entrypoint and router registration
+- [app/routers/](app/routers/) — API route modules (audit, events, chaos, state)
+- [app/services/](app/services/) — core services (event_store, state_reconstructor, audit_engine, chaos generator, explainability)
+- [static/](static/) — dashboard and UI pages (`index.html`, `explain.html`, `chaos.html`)
+- [fixtures/](fixtures/) — example event fixtures used for seeding the DB
+- [scripts/seed.py](scripts/seed.py) — script to populate the local DB with sample data
+- [Dockerfile](Dockerfile) — container image build instructions
+- [requirements.txt](requirements.txt) — Python dependencies
+
+**Live demo screenshots**
+Place the screenshots you captured into `docs/screenshots/` with the filenames below so the README displays them. If you want, I can add them for you if you upload the image files into the repo.
+
+- Dashboard overview (dark):
+
+  ![Dashboard Overview](docs/screenshots/dashboard-overview.png)
+
+- Time Travel / State Replay view:
+
+  ![Time Travel State Viewer](docs/screenshots/time-travel.png)
+
+- Conflict history and explainability:
+
+  ![Conflict History](docs/screenshots/conflicts.png)
+
+- Chaos Lab — load generator UI and final summary:
+
+  ![Chaos Lab](docs/screenshots/chaos-lab.png)
+
+If you prefer different filenames, update the paths above or place your files in `docs/screenshots/` and keep the names used here.
+
+**Features**
+- Event ingestion endpoint and validation
+- Deterministic state reconstruction via event replay
+- Conflict resolution with audit log of decisions and visualizations
+- Explainability API: `GET /audit/{decision_id}/explain` (decision-level rationale)
+- Chaos generator: `POST /chaos/run` and `GET /chaos/status` for live stress tests
+- Dashboard UI with Theme (dark / light) toggle persisted in `localStorage`
+
+**Tech stack**
+- Python 3.11+ (project uses 3.11-slim in Dockerfile)
+- FastAPI + Uvicorn
+- Pydantic v2 for models/validation
+- SQLite for local persistence (DB path: `data/allocation.db`)
+- Vanilla JS + Tailwind CDN for static UI pages
+
+**Quickstart — Local (recommended for development)**
+1. Create a virtualenv and install deps:
+
+```bash
+python -m venv .venv
+source .venv/Scripts/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+2. Seed sample data (optional):
+
+```bash
+python scripts/seed.py
+```
+
+3. Run the app:
+
+```bash
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+4. Open the dashboard in your browser:
+
+- http://127.0.0.1:8000/dashboard/
+- Explainability UI: [static/explain.html](static/explain.html)
+- Chaos Lab UI: [static/chaos.html](static/chaos.html)
+
+**Docker / Compose**
+- Build and run with Docker (exposes `:8000`):
+
+```bash
+docker build -t cloudarbiter:local .
+docker run --rm -p 8000:8000 -v "${PWD}/data:/app/data" cloudarbiter:local
+```
+
+Or use `docker-compose` if you prefer (compose file provided at repository root).
+
+**Important endpoints**
+- POST `/events` — ingest an allocation event
+- GET `/state` — current allocation state
+- GET `/audit` — paginated audit log
+- GET `/audit/{decision_id}` — single audit decision
+- GET `/audit/{decision_id}/explain` — explainability payload for a decision
+- POST `/chaos/run` — run a chaos load test (JSON body: `{events, duplicates, out_of_order, conflicts}`)
+- GET `/chaos/status` — status & metrics for last chaos run
+
+**Troubleshooting & notes**
+- If port 8000 is in use on Windows, find and stop the process or choose another port:
+
+```powershell
+netstat -ano | findstr :8000
+tasklist /FI "PID eq <pid>"
+taskkill /PID <pid> /F
+```
+
+- The SQLite DB is located at `data/allocation.db`. Back it up if you intend to run destructive chaos tests.
+
+**Contributing**
+- Use branches and open pull requests to `main`. Tests live in `tests/` and can be run with `pytest -q`.
+
+**License**
+- MIT — see LICENSE file if present.
+
+-----
+
+If you'd like, I can:
+- upload your local screenshots into `docs/screenshots/` for you (you must provide the image files), or
+- generate smaller annotated thumbnails for the README.
+
+To have me push the screenshots as well, upload the images (or place them in the repo) and tell me the filenames to use.
 # Event-Driven Conflict Resolution for Sustainable Cloud Resource Allocation
 
 A fully locally-deployable **event sourcing engine** that ingests asynchronous, possibly
