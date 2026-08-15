@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Explainability — Decision Playback</title>
+  <!-- Tailwind via CDN for quick dev-only styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { background: #03040a; color:#e6eef8; font-family: Inter, system-ui, sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    .control-room { background: linear-gradient(180deg,#071023 0%,#06101a 100%); border: 1px solid rgba(255,255,255,0.03); }
+    .pulse { box-shadow: 0 0 30px rgba(124,91,245,0.14); }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+  <div class="max-w-5xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold">Decision Explainability</h1>
+      <a href="/dashboard" class="text-sm text-slate-300 hover:text-white mono">← Back to Dashboard</a>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="col-span-1 control-room p-4 rounded-lg">
+        <div class="text-sm text-slate-400 mb-2">Recent Decisions</div>
+        <div id="decisions-list" class="space-y-2 text-sm"></div>
+      </div>
+      <div class="col-span-2 control-room p-4 rounded-lg">
+        <div class="flex items-center justify-between">
+          <div>
+            <div id="decision-meta" class="text-sm text-slate-300 mono"></div>
+            <div id="decision-reason" class="text-xs text-slate-400 mt-1"></div>
+          </div>
+          <div class="space-x-2">
+            <button id="btn-replay" class="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm">Replay Decision</button>
+          </div>
+        </div>
+
+        <div id="playback" class="mt-6">
+          <div id="steps" class="space-y-3"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin.replace('/dashboard','') || window.location.origin;
+    async function loadDecisions() {
+      const el = document.getElementById('decisions-list');
+      el.innerHTML = '<div class="text-slate-500">Loading…</div>';
+      try {
+        const r = await fetch('/audit?limit=100');
+        const data = await r.json();
+        el.innerHTML = data.slice().reverse().map(d=>{
+          return `<button data-id="${d.decision_id}" class="w-full text-left px-3 py-2 rounded hover:bg-indigo-700/10 text-slate-200 mono">`+
+                 `<div class=\"text-xs text-slate-400\">${new Date(d.decision_timestamp).toLocaleString()}</div>`+
+                 `<div class=\"text-sm truncate\">${d.decision_id}</div></button>`;
+        }).join('\n');
+        document.querySelectorAll('#decisions-list button').forEach(b=>b.addEventListener('click', ()=>selectDecision(b.dataset.id)));
+      } catch(e){ el.innerHTML='<div class="text-red-400">Failed to load decisions</div>'; }
+    }
+
+    let current = null;
+    let animationTimer = null;
+
+    async function selectDecision(id) {
+      stopPlayback();
+      current = id;
+      const meta = document.getElementById('decision-meta');
+      const reason = document.getElementById('decision-reason');
+      meta.textContent = 'Loading decision ' + id;
+      reason.textContent = '';
+      const stepsEl = document.getElementById('steps');
+      stepsEl.innerHTML = '';
+      try {
+        const r = await fetch(`/audit/${id}/explain`);
+        if (!r.ok) throw new Error('not found');
+        const d = await r.json();
+        meta.textContent = `Decision: ${d.decision_id}  —  Winner: ${d.winner_event_id || 'None'}`;
+        reason.textContent = d.final_reason || '';
+        // build steps
+        const steps = d.checks || [];
+        stepsEl.innerHTML = steps.map((s,i)=>renderStep(s,i)).join('\n');
+        // highlight winner id in UI (green outline)
+        document.querySelectorAll('.step-card').forEach(c=>c.classList.remove('ring-2','ring-green-400'));
+        // autoplay
+        playSteps();
+      } catch(e){ meta.textContent = 'Failed to load'; stepsEl.innerHTML = '<div class="text-red-400">No explanation available.</div>'; }
+    }
+
+    function renderStep(s,i){
+      const winner = s.winner && s.winner !== 'Skipped' ? s.winner : '';
+      return `
+        <div class="step-card p-3 rounded border border-slate-800 bg-gradient-to-b from-slate-900/40 to-transparent" data-idx="${i}">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-sm text-slate-300 font-semibold">${s.step}</div>
+              <div class="text-xs text-slate-400 mono mt-1">${s.result}</div>
+            </div>
+            <div class="text-xs mono text-slate-200">${winner ? 'winner: ' + winner : ''}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function playSteps() {
+      const nodes = Array.from(document.querySelectorAll('.step-card'));
+      let idx = 0;
+      if (!nodes.length) return;
+      highlight(nodes[0]);
+      animationTimer = setInterval(()=>{
+        unhighlight(nodes[idx]);
+        idx++;
+        if (idx >= nodes.length) { stopPlayback(); return; }
+        highlight(nodes[idx]);
+      }, 1400);
+    }
+    function highlight(node){
+      node.classList.add('ring-2','ring-green-400');
+      node.classList.add('scale-102');
+      node.style.transform='scale(1.01)';
+    }
+    function unhighlight(node){
+      node.classList.remove('ring-2','ring-green-400');
+      node.style.transform='none';
+    }
+    function stopPlayback(){ if(animationTimer){ clearInterval(animationTimer); animationTimer=null; } }
+
+    document.getElementById('btn-replay').addEventListener('click', ()=>{ stopPlayback(); playSteps(); });
+
+    loadDecisions();
+  </script>
+</body>
+</html>

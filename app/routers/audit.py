@@ -11,6 +11,7 @@ from app.db import get_connection
 from app.models.audit import AuditEntry
 from app.models.event import StoredEvent
 from app.services import audit_engine
+from app.services import explainability
 
 router = APIRouter(prefix="/audit", tags=["Audit"])
 
@@ -98,3 +99,17 @@ async def get_audit_entry_visual(decision_id: str):
         "resolution_reason": entry.resolution_reason,
         "reason_detail": reason_detail,
     }
+
+
+@router.get(
+    "/{decision_id}/explain",
+    summary="Get explainability breakdown for a decision",
+)
+async def get_audit_entry_explain(decision_id: str):
+    data = explainability.explain_decision(decision_id)
+    if data is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Audit entry not found: {decision_id!r}",
+        )
+    return data

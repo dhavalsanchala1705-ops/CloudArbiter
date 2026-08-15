@@ -311,6 +311,7 @@
     <button class="tab active" data-tab="conflicts" role="tab">⚡ Conflicts</button>
     <button class="tab" data-tab="timetravel" role="tab">🕐 Time Travel</button>
     <button class="tab" data-tab="dashboard" role="tab">📊 Dashboard</button>
+    <button class="tab" data-tab="explain" role="tab">🔍 Explainability</button>
   </nav>
 
   <!-- CONFLICTS TAB -->
@@ -470,6 +471,11 @@
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
+      if (tab.dataset.tab === 'explain') {
+        // open the explainability full-page tool
+        window.location.href = '/dashboard/explain.html';
+        return;
+      }
       document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
 
       if (tab.dataset.tab === 'dashboard') {
