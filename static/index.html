@@ -312,6 +312,7 @@
     <button class="tab" data-tab="timetravel" role="tab">🕐 Time Travel</button>
     <button class="tab" data-tab="dashboard" role="tab">📊 Dashboard</button>
     <button class="tab" data-tab="explain" role="tab">🔍 Explainability</button>
+    <button class="tab" data-tab="chaos" role="tab">🚀 Chaos Lab</button>
   </nav>
 
   <!-- CONFLICTS TAB -->
@@ -474,6 +475,10 @@
       if (tab.dataset.tab === 'explain') {
         // open the explainability full-page tool
         window.location.href = '/dashboard/explain.html';
+        return;
+      }
+      if (tab.dataset.tab === 'chaos') {
+        window.location.href = '/dashboard/chaos.html';
         return;
       }
       document.getElementById('panel-' + tab.dataset.tab).classList.add('active');

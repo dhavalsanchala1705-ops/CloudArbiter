@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chaos Lab — Live Stress Test</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    body { background:#020617; color:#e6eef8; font-family: Inter, system-ui, sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold">🚀 Chaos Lab</h1>
+      <a href="/dashboard" class="text-sm text-slate-300 mono">← Back to Dashboard</a>
+    </div>
+
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="col-span-1 p-4 rounded-lg bg-slate-900/40 border border-slate-800">
+        <div class="mb-2 text-sm text-slate-400">Presets</div>
+        <div class="space-y-2">
+          <button id="preset-light" class="w-full py-2 rounded bg-green-600 hover:bg-green-500">Light Load</button>
+          <button id="preset-medium" class="w-full py-2 rounded bg-yellow-500 hover:bg-yellow-400">Medium Load</button>
+          <button id="preset-extreme" class="w-full py-2 rounded bg-red-600 hover:bg-red-500">Extreme Load</button>
+        </div>
+        <div class="mt-4">
+          <div class="text-sm text-slate-400 mb-2">Custom</div>
+          <label class="block text-xs text-slate-300 mono">Events</label>
+          <input id="inp-events" type="number" value="100" class="w-full p-2 rounded bg-slate-800 border border-slate-700 mono" />
+          <label class="block text-xs text-slate-300 mono mt-2">Duplicates</label>
+          <input id="inp-duplicates" type="number" value="20" class="w-full p-2 rounded bg-slate-800 border border-slate-700 mono" />
+          <label class="block text-xs text-slate-300 mono mt-2">Out of order</label>
+          <input id="inp-ooo" type="number" value="15" class="w-full p-2 rounded bg-slate-800 border border-slate-700 mono" />
+          <label class="block text-xs text-slate-300 mono mt-2">Conflicts</label>
+          <input id="inp-conflicts" type="number" value="10" class="w-full p-2 rounded bg-slate-800 border border-slate-700 mono" />
+          <button id="btn-run" class="w-full mt-4 py-2 rounded bg-indigo-600 hover:bg-indigo-500">Launch Chaos Test</button>
+        </div>
+      </div>
+
+      <div class="col-span-2 p-4 rounded-lg bg-slate-900/40 border border-slate-800">
+        <div class="grid grid-cols-5 gap-4">
+          <div class="p-3 bg-slate-800 rounded mono text-center">
+            <div class="text-xs text-slate-400">Events Processed</div>
+            <div id="card-events" class="text-2xl font-semibold mt-2">0</div>
+          </div>
+          <div class="p-3 bg-slate-800 rounded mono text-center">
+            <div class="text-xs text-slate-400">Conflicts Detected</div>
+            <div id="card-conflicts" class="text-2xl font-semibold mt-2">0</div>
+          </div>
+          <div class="p-3 bg-slate-800 rounded mono text-center">
+            <div class="text-xs text-slate-400">Duplicates Ignored</div>
+            <div id="card-dups" class="text-2xl font-semibold mt-2">0</div>
+          </div>
+          <div class="p-3 bg-slate-800 rounded mono text-center">
+            <div class="text-xs text-slate-400">Audit Entries</div>
+            <div id="card-audits" class="text-2xl font-semibold mt-2">0</div>
+          </div>
+          <div class="p-3 bg-slate-800 rounded mono text-center">
+            <div class="text-xs text-slate-400">Health Score</div>
+            <div id="card-health" class="text-2xl font-semibold mt-2 text-green-400">100</div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <div class="text-sm text-slate-400 mb-2">Activity Feed</div>
+          <div id="activity" class="h-48 overflow-y-auto p-3 rounded bg-black/20 mono text-sm"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="summary" class="hidden p-4 rounded bg-slate-900/40 border border-slate-800">
+      <h2 class="text-lg font-semibold mb-2">Final Summary</h2>
+      <ul id="summary-list" class="list-inside list-disc"></ul>
+    </div>
+  </div>
+
+  <script>
+    const API = window.location.origin;
+    const act = document.getElementById('activity');
+
+    document.getElementById('preset-light').addEventListener('click', ()=>{
+      document.getElementById('inp-events').value = 50;
+      document.getElementById('inp-duplicates').value = 5;
+      document.getElementById('inp-ooo').value = 5;
+      document.getElementById('inp-conflicts').value = 3;
+    });
+    document.getElementById('preset-medium').addEventListener('click', ()=>{
+      document.getElementById('inp-events').value = 200;
+      document.getElementById('inp-duplicates').value = 40;
+      document.getElementById('inp-ooo').value = 30;
+      document.getElementById('inp-conflicts').value = 12;
+    });
+    document.getElementById('preset-extreme').addEventListener('click', ()=>{
+      document.getElementById('inp-events').value = 1000;
+      document.getElementById('inp-duplicates').value = 200;
+      document.getElementById('inp-ooo').value = 150;
+      document.getElementById('inp-conflicts').value = 80;
+    });
+
+    let polling = null;
+
+    document.getElementById('btn-run').addEventListener('click', async ()=>{
+      const events = parseInt(document.getElementById('inp-events').value,10)||100;
+      const duplicates = parseInt(document.getElementById('inp-duplicates').value,10)||0;
+      const ooo = parseInt(document.getElementById('inp-ooo').value,10)||0;
+      const conflicts = parseInt(document.getElementById('inp-conflicts').value,10)||0;
+      // clear activity and summary
+      act.innerHTML = '';
+      document.getElementById('summary').classList.add('hidden');
+
+      // start polling
+      if (!polling) polling = setInterval(loadStatus, 1000);
+
+      try {
+        const resp = await fetch('/chaos/run', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ events, duplicates, out_of_order: ooo, conflicts })
+        });
+        const data = await resp.json();
+        // show final summary
+        showSummary(data);
+      } catch(e){ alert('Chaos run failed'); }
+    });
+
+    async function loadStatus(){
+      try{
+        const r = await fetch('/chaos/status');
+        const s = await r.json();
+        document.getElementById('card-events').textContent = s.processed_events;
+        document.getElementById('card-conflicts').textContent = s.conflicts_detected;
+        document.getElementById('card-dups').textContent = s.duplicates_ignored;
+        document.getElementById('card-audits').textContent = s.audit_logs_created;
+        document.getElementById('card-health').textContent = s.current_health_score;
+        // activity
+        act.innerHTML = s.activity.slice().reverse().map(l=>`<div>${l}</div>`).join('\n');
+      }catch(e){/*ignore*/}
+    }
+
+    function showSummary(d){
+      document.getElementById('summary-list').innerHTML = `
+        <li>✔ Events generated: ${d.events_generated}</li>
+        <li>✔ Duplicates injected: ${d.duplicates_injected}</li>
+        <li>✔ Out-of-order events: ${d.out_of_order_events}</li>
+        <li>✔ Conflicts groups: ${d.conflicts_created}</li>
+        <li>✔ Audit entries created: ${d.audit_entries_created}</li>
+        <li>✔ Processing time: ${d.processing_time_ms} ms</li>
+      `;
+      document.getElementById('summary').classList.remove('hidden');
+      // stop polling after a short delay
+      setTimeout(()=>{ if(polling){ clearInterval(polling); polling=null; } }, 3000);
+    }
+
+    // initial load
+    loadStatus();
+  </script>
+</body>
+</html>

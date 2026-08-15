@@ -30,6 +30,7 @@ from app.config import API_DESCRIPTION, API_TITLE, API_VERSION
 from app.db import get_connection, init_db
 from app.models.state import StateSnapshot
 from app.routers import audit, events, state
+from app.routers import chaos
 from app.services import state_reconstructor
 
 
@@ -74,6 +75,7 @@ app.add_middleware(
 app.include_router(events.router)
 app.include_router(state.router)
 app.include_router(audit.router)
+app.include_router(chaos.router)
 
 
 # ---------------------------------------------------------------------------
