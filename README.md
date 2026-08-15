@@ -16,27 +16,6 @@ Welcome to CloudArbiter — an event-sourced resource allocation and conflict-re
 - [Dockerfile](Dockerfile) — container image build instructions
 - [requirements.txt](requirements.txt) — Python dependencies
 
-**Live demo screenshots**
-Place the screenshots you captured into `docs/screenshots/` with the filenames below so the README displays them. If you want, I can add them for you if you upload the image files into the repo.
-
-- Dashboard overview (dark):
-
-  ![Dashboard Overview](docs/screenshots/dashboard-overview.png)
-
-- Time Travel / State Replay view:
-
-  ![Time Travel State Viewer](docs/screenshots/time-travel.png)
-
-- Conflict history and explainability:
-
-  ![Conflict History](docs/screenshots/conflicts.png)
-
-- Chaos Lab — load generator UI and final summary:
-
-  ![Chaos Lab](docs/screenshots/chaos-lab.png)
-
-If you prefer different filenames, update the paths above or place your files in `docs/screenshots/` and keep the names used here.
-
 **Features**
 - Event ingestion endpoint and validation
 - Deterministic state reconstruction via event replay
