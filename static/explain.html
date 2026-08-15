@@ -12,13 +12,19 @@
     .mono { font-family: 'JetBrains Mono', monospace; }
     .control-room { background: linear-gradient(180deg,#071023 0%,#06101a 100%); border: 1px solid rgba(255,255,255,0.03); }
     .pulse { box-shadow: 0 0 30px rgba(124,91,245,0.14); }
+    body.light { background: #f7fafc; color: #0f172a; }
+    body.light .control-room { background: linear-gradient(180deg,#ffffff 0%,#f8fafc 100%); border-color: #e6eaf0; }
+    body.light .mono { color: #0f172a; }
   </style>
 </head>
 <body class="min-h-screen p-6">
   <div class="max-w-5xl mx-auto">
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-semibold">Decision Explainability</h1>
-      <a href="/dashboard" class="text-sm text-slate-300 hover:text-white mono">← Back to Dashboard</a>
+      <div class="flex items-center gap-3">
+        <button id="theme-toggle" class="px-3 py-1 rounded bg-slate-800 text-sm">🌙</button>
+        <a href="/dashboard" class="text-sm text-slate-300 hover:text-white mono">← Back to Dashboard</a>
+      </div>
     </div>
 
     <div class="grid grid-cols-3 gap-4 mb-6">
@@ -128,6 +134,24 @@
     function stopPlayback(){ if(animationTimer){ clearInterval(animationTimer); animationTimer=null; } }
 
     document.getElementById('btn-replay').addEventListener('click', ()=>{ stopPlayback(); playSteps(); });
+
+    // Theme handling
+    function setTheme(mode) {
+      if (mode === 'light') document.body.classList.add('light'); else document.body.classList.remove('light');
+      localStorage.setItem('theme', mode);
+      const btn = document.getElementById('theme-toggle'); if (btn) btn.textContent = mode === 'light' ? '🌙' : '☀️';
+    }
+    function toggleTheme(){
+      const cur = localStorage.getItem('theme') || (document.body.classList.contains('light') ? 'light' : 'dark');
+      setTheme(cur === 'light' ? 'dark' : 'light');
+    }
+    const tbtn = document.getElementById('theme-toggle'); if (tbtn) tbtn.addEventListener('click', toggleTheme);
+    (function(){
+      const stored = localStorage.getItem('theme');
+      if (stored) setTheme(stored);
+      else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) setTheme('light');
+      else setTheme('dark');
+    })();
 
     loadDecisions();
   </script>

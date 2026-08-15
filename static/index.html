@@ -290,6 +290,26 @@
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
     .loading { color: var(--text-muted); font-size: 0.82rem; padding: 20px; text-align: center; }
   </style>
+  <style>
+    /* Light mode overrides when body has .light */
+    body.light {
+      --bg: #f7fafc;
+      --surface: #ffffff;
+      --surface2: #f8fafc;
+      --border: #e6eaf0;
+      --border2: #dfe6ef;
+      --accent: #2563eb;
+      --accent2: #7c3aed;
+      --green: #059669;
+      --yellow: #d97706;
+      --red: #dc2626;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --text-dim: #6b7280;
+      --glow: 0 0 12px rgba(37,99,235,0.06);
+      --glow-green: 0 0 10px rgba(5,150,105,0.06);
+    }
+  </style>
 </head>
 <body>
 <div class="layout">
@@ -301,9 +321,12 @@
         <div class="subtitle">Event Sourcing · Replay · Conflict Resolution · Utilization</div>
       </div>
     </div>
-    <div class="status-pill" id="status-pill">
-      <div class="status-dot" id="status-dot"></div>
-      <span id="status-text">Connecting…</span>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button id="theme-toggle" class="btn" title="Toggle light/dark">🌙</button>
+      <div class="status-pill" id="status-pill">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Connecting…</span>
+      </div>
     </div>
   </header>
 
@@ -813,6 +836,25 @@
   }
 
   // ── Init ──────────────────────────────────────────────────
+  // Theme handling
+  function setTheme(mode) {
+    if (mode === 'light') document.body.classList.add('light'); else document.body.classList.remove('light');
+    localStorage.setItem('theme', mode);
+    document.getElementById('theme-toggle').textContent = mode === 'light' ? '🌙' : '☀️';
+  }
+  function toggleTheme(){
+    const cur = localStorage.getItem('theme') || (document.body.classList.contains('light') ? 'light' : 'dark');
+    setTheme(cur === 'light' ? 'dark' : 'light');
+  }
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+  // initialise theme from localStorage or prefers-color-scheme
+  (function(){
+    const stored = localStorage.getItem('theme');
+    if (stored) setTheme(stored);
+    else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) setTheme('light');
+    else setTheme('dark');
+  })();
+
   loadConflicts();
 </script>
 </body>
