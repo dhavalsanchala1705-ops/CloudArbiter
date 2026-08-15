@@ -1,0 +1,14 @@
+{
+  "_comment": "Over-allocation attempt: requests 950 GPU-hours in us-east-1, but capacity is 1000 and 100 are already allocated from fixture 01. This single event requests 950 which would push total to 1050 > 1000. Must be hard-rejected regardless of priority.",
+  "event_id": "overalloc-0001",
+  "source": "ai_training",
+  "timestamp": "2024-03-06T08:00:00Z",
+  "action": "request",
+  "resource_type": "GPU",
+  "amount": 950.0,
+  "carbon_intensity": 415.0,
+  "region": "us-east-1",
+  "user_id": "user-greedy",
+  "priority": 10,
+  "duration_hours": 5.0
+}

@@ -1,0 +1,13 @@
+{
+  "_comment": "MALFORMED EVENT: missing required 'resource_type' field. Must return 400, must NOT enter the event log.",
+  "event_id": "malformed-0001",
+  "source": "ai_training",
+  "timestamp": "2024-03-05T10:00:00Z",
+  "action": "request",
+  "amount": 50.0,
+  "carbon_intensity": 120.0,
+  "region": "us-west-2",
+  "user_id": "user-alice",
+  "priority": 7,
+  "duration_hours": 2.0
+}

@@ -1,0 +1,13 @@
+{
+  "event_id": "a1b2c3d4-0001-0001-0001-000000000001",
+  "source": "ai_training",
+  "timestamp": "2024-03-01T08:00:00Z",
+  "action": "request",
+  "resource_type": "GPU",
+  "amount": 100.0,
+  "carbon_intensity": 120.0,
+  "region": "us-west-2",
+  "user_id": "user-alice",
+  "priority": 8,
+  "duration_hours": 4.0
+}

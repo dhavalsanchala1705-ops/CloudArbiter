@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: allocation-engine
+    ports:
+      - "8000:8000"
+    volumes:
+      # SQLite file persists across container restarts
+      # Judges can inspect data/allocation.db directly with any SQLite viewer
+      - ./data:/app/data
+    environment:
+      - DB_PATH=data/allocation.db
+      # Optional overrides — uncomment to change capacity limits:
+      # - GPU_CAPACITY_HOURS=2000
+      # - CPU_CAPACITY_HOURS=10000
+      # - MEM_CAPACITY_GBH=20000
+      # - CARBON_BUDGET_KG=500
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped

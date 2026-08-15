@@ -1,0 +1,14 @@
+{
+  "_comment": "Release for a resource that was NEVER allocated to this user in this region. Must be rejected gracefully (orphan release). State must not go negative.",
+  "event_id": "orphan-release-0001",
+  "source": "serverless",
+  "timestamp": "2024-03-04T10:00:00Z",
+  "action": "release",
+  "resource_type": "memory",
+  "amount": 500.0,
+  "carbon_intensity": 411.0,
+  "region": "eu-central-1",
+  "user_id": "user-nobody",
+  "priority": 5,
+  "duration_hours": 1.0
+}

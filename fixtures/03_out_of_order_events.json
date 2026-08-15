@@ -1,0 +1,44 @@
+[
+  {
+    "_comment": "Event C — latest timestamp, seeded FIRST (out of order arrival)",
+    "event_id": "ooo-event-0003-c",
+    "source": "serverless",
+    "timestamp": "2024-03-02T12:00:00Z",
+    "action": "request",
+    "resource_type": "CPU",
+    "amount": 200.0,
+    "carbon_intensity": 316.0,
+    "region": "eu-west-1",
+    "user_id": "user-charlie",
+    "priority": 5,
+    "duration_hours": 2.0
+  },
+  {
+    "_comment": "Event A — earliest timestamp, seeded SECOND",
+    "event_id": "ooo-event-0001-a",
+    "source": "serverless",
+    "timestamp": "2024-03-02T08:00:00Z",
+    "action": "request",
+    "resource_type": "CPU",
+    "amount": 150.0,
+    "carbon_intensity": 316.0,
+    "region": "eu-west-1",
+    "user_id": "user-alice",
+    "priority": 5,
+    "duration_hours": 2.0
+  },
+  {
+    "_comment": "Event B — middle timestamp, seeded LAST",
+    "event_id": "ooo-event-0002-b",
+    "source": "serverless",
+    "timestamp": "2024-03-02T10:00:00Z",
+    "action": "request",
+    "resource_type": "CPU",
+    "amount": 100.0,
+    "carbon_intensity": 316.0,
+    "region": "eu-west-1",
+    "user_id": "user-bob",
+    "priority": 5,
+    "duration_hours": 2.0
+  }
+]

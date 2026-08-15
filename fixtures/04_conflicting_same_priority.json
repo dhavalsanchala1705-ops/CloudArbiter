@@ -1,0 +1,30 @@
+[
+  {
+    "_comment": "Two overlapping GPU requests, same priority=6, but different carbon_intensity. Lower carbon_intensity (greener) should win.",
+    "event_id": "carbon-tie-0001-dirty",
+    "source": "ai_training",
+    "timestamp": "2024-03-03T09:00:00Z",
+    "action": "request",
+    "resource_type": "GPU",
+    "amount": 800.0,
+    "carbon_intensity": 493.0,
+    "region": "ap-southeast-1",
+    "user_id": "user-dirty-region",
+    "priority": 6,
+    "duration_hours": 3.0
+  },
+  {
+    "_comment": "Same priority, same time window, but LOWER carbon_intensity. This one should WIN.",
+    "event_id": "carbon-tie-0002-green",
+    "source": "sustainable",
+    "timestamp": "2024-03-03T09:30:00Z",
+    "action": "request",
+    "resource_type": "GPU",
+    "amount": 800.0,
+    "carbon_intensity": 120.0,
+    "region": "ap-southeast-1",
+    "user_id": "user-green",
+    "priority": 6,
+    "duration_hours": 3.0
+  }
+]

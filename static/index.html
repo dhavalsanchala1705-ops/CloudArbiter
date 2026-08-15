@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Resource Allocation — Visualization</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0d14;
+      --surface: #111520;
+      --surface2: #161b2e;
+      --border: #1e2540;
+      --border2: #2a3154;
+      --accent: #5b8af5;
+      --accent2: #7c5bf5;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --text: #e2e8f0;
+      --text-muted: #64748b;
+      --text-dim: #94a3b8;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --glow: 0 0 20px rgba(91,138,245,0.15);
+      --glow-green: 0 0 12px rgba(52,211,153,0.2);
+      --transition: 0.22s cubic-bezier(.4,0,.2,1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(91,138,245,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 60% at 80% 80%, rgba(124,91,245,0.05) 0%, transparent 60%);
+      pointer-events: none; z-index: 0;
+    }
+
+    .layout { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 24px 40px; }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 24px 0 16px; border-bottom: 1px solid var(--border);
+      margin-bottom: 0; gap: 16px; flex-wrap: wrap;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .logo {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; box-shadow: var(--glow);
+    }
+    h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+    h1 span { color: var(--accent); }
+    .subtitle { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 999px; padding: 6px 14px; font-size: 0.8rem; font-weight: 500;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); }
+    .status-dot.alive { background: var(--green); box-shadow: var(--glow-green); animation: pulse 2s infinite; }
+    .status-dot.dead { background: var(--red); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* Tabs */
+    .tabs {
+      display: flex; gap: 4px; padding: 16px 0 20px;
+      border-bottom: 1px solid var(--border); margin-bottom: 24px;
+    }
+    .tab {
+      padding: 10px 20px; border-radius: var(--radius-sm);
+      border: 1px solid transparent; background: transparent;
+      color: var(--text-muted); font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; font-family: inherit; transition: all var(--transition);
+    }
+    .tab:hover { color: var(--text); background: var(--surface); }
+    .tab.active {
+      color: var(--accent); background: var(--surface);
+      border-color: var(--border2); box-shadow: var(--glow);
+    }
+
+    .tab-panel { display: none; animation: fadeIn 0.25s ease; }
+    .tab-panel.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+    .panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px; border-bottom: 1px solid var(--border); gap: 10px;
+    }
+    .panel-title { font-size: 0.88rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .panel-meta { font-size: 0.75rem; color: var(--text-muted); }
+    .panel-body { padding: 20px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border2); background: var(--surface2);
+      color: var(--text); font-size: 0.82rem; font-weight: 500;
+      cursor: pointer; transition: all var(--transition); font-family: inherit;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); border-color: transparent; color: #fff; }
+    .btn.primary:hover { opacity: 0.88; color: #fff; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+    .resource-table { width: 100%; border-collapse: collapse; }
+    .resource-table th {
+      text-align: left; font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-muted);
+      padding: 0 12px 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .resource-table td {
+      padding: 12px 12px 12px 0; font-size: 0.83rem;
+      border-bottom: 1px solid var(--border); vertical-align: middle;
+    }
+    .resource-table tr:last-child td { border-bottom: none; }
+    .resource-table tr:hover td { background: rgba(255,255,255,0.015); }
+
+    .rtype-badge {
+      display: inline-flex; padding: 3px 10px; border-radius: 999px;
+      font-size: 0.72rem; font-weight: 600; font-family: 'JetBrains Mono', monospace;
+    }
+    .rtype-GPU { background: rgba(91,138,245,0.15); color: #7aaeff; border: 1px solid rgba(91,138,245,0.3); }
+    .rtype-CPU { background: rgba(124,91,245,0.15); color: #a78bfa; border: 1px solid rgba(124,91,245,0.3); }
+    .rtype-memory { background: rgba(52,211,153,0.1); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.25); }
+
+    .amount-cell { font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+
+    .empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty p { font-size: 0.85rem; }
+
+    /* Conflicts */
+    .conflicts-scroll { max-height: 72vh; overflow-y: auto; padding-right: 4px; }
+    .conflict-card {
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      margin-bottom: 12px; background: var(--surface2); overflow: hidden;
+    }
+    .conflict-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; cursor: pointer; user-select: none;
+      transition: background var(--transition);
+    }
+    .conflict-card-header:hover { background: rgba(255,255,255,0.02); }
+    .conflict-card-body { display: none; padding: 0 16px 16px; border-top: 1px solid var(--border); }
+    .conflict-card.open .conflict-card-body { display: block; }
+    .conflict-card.open .chevron { transform: rotate(180deg); }
+    .chevron { transition: transform var(--transition); color: var(--text-muted); font-size: 0.75rem; }
+
+    .conflict-badge {
+      display: inline-flex; padding: 3px 10px; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-overlap { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+    .badge-over_alloc { background: rgba(251,191,36,0.12); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+    .badge-orphan { background: rgba(94,234,212,0.1); color: #5eead4; border: 1px solid rgba(94,234,212,0.25); }
+    .badge-no_conflict { background: rgba(52,211,153,0.1); color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
+
+    .conflict-diagram {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 24px 16px; margin: 16px 0; background: var(--bg);
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+    }
+    .diagram-row { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; flex-wrap: wrap; }
+    .diagram-node {
+      padding: 10px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border2); background: var(--surface);
+      font-size: 0.75rem; max-width: 200px; cursor: pointer;
+      transition: all var(--transition); text-align: center;
+    }
+    .diagram-node:hover { border-color: var(--accent); }
+    .diagram-node.winner { border-color: var(--green); background: rgba(52,211,153,0.08); box-shadow: var(--glow-green); }
+    .diagram-node.loser { opacity: 0.65; }
+    .diagram-node .node-label { font-weight: 600; margin-bottom: 4px; }
+    .diagram-node .node-meta { font-size: 0.65rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+    .diagram-conflict {
+      padding: 8px 16px; border-radius: 999px;
+      background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3);
+      color: var(--red); font-size: 0.72rem; font-weight: 600;
+    }
+    .diagram-arrow { color: var(--text-muted); font-size: 1.2rem; }
+    .diagram-winner-row { margin-top: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .diagram-winner-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .event-detail {
+      display: none; margin-top: 8px; padding: 12px;
+      background: var(--bg); border-radius: var(--radius-sm);
+      border: 1px solid var(--border); font-family: 'JetBrains Mono', monospace;
+      font-size: 0.68rem; color: var(--text-dim); white-space: pre-wrap;
+      word-break: break-all; max-height: 200px; overflow-y: auto;
+    }
+    .event-detail.open { display: block; }
+
+    .resolution-text { font-size: 0.78rem; color: var(--text-dim); line-height: 1.55; margin-top: 12px; }
+    .resolution-detail { font-size: 0.72rem; color: var(--text-muted); margin-top: 6px; font-style: italic; }
+
+    /* Time Travel */
+    .time-display {
+      font-family: 'JetBrains Mono', monospace; font-size: 1.1rem;
+      color: var(--accent); text-align: center; padding: 16px;
+      background: var(--surface2); border-radius: var(--radius-sm);
+      border: 1px solid var(--border2); margin-bottom: 20px;
+    }
+    .slider-wrap { padding: 8px 4px 24px; }
+    .time-slider {
+      width: 100%; height: 6px; -webkit-appearance: none; appearance: none;
+      background: var(--border); border-radius: 999px; outline: none; cursor: pointer;
+    }
+    .time-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: var(--glow); cursor: pointer;
+    }
+    .slider-labels {
+      display: flex; justify-content: space-between;
+      font-size: 0.68rem; color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace; margin-top: 8px;
+    }
+    .time-controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+
+    /* Dashboard charts */
+    .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 28px; }
+    .chart-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 18px;
+    }
+    .chart-title { font-size: 0.78rem; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .chart-bar-wrap { margin-bottom: 8px; }
+    .chart-bar-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 6px; }
+    .chart-bar { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
+    .chart-bar-fill {
+      height: 100%; border-radius: 999px;
+      transition: width 0.6s cubic-bezier(.4,0,.2,1);
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .chart-bar-fill.warn { background: linear-gradient(90deg, var(--yellow), #f59e0b); }
+    .chart-bar-fill.danger { background: linear-gradient(90deg, var(--red), #dc2626); }
+    .chart-bar-fill.gpu { background: linear-gradient(90deg, #5b8af5, #7c5bf5); }
+    .chart-bar-fill.cpu { background: linear-gradient(90deg, #7c5bf5, #a78bfa); }
+    .chart-bar-fill.mem { background: linear-gradient(90deg, #34d399, #6ee7b7); }
+
+    .region-table { width: 100%; border-collapse: collapse; }
+    .region-table th {
+      text-align: left; font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-muted); padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .region-table td { padding: 12px 8px 12px 0; font-size: 0.83rem; border-bottom: 1px solid var(--border); }
+    .region-table tr:last-child td { border-bottom: none; }
+    .progress-wrap { display: flex; align-items: center; gap: 10px; }
+    .progress-bar { flex: 1; height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+    .progress-fill.warn { background: linear-gradient(90deg, var(--yellow), #f59e0b); }
+    .progress-fill.danger { background: linear-gradient(90deg, var(--red), #dc2626); }
+    .progress-pct { font-size: 0.72rem; color: var(--text-muted); min-width: 42px; text-align: right; font-family: 'JetBrains Mono', monospace; }
+
+    .stats-row {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px; margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+    }
+    .stat-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; margin-top: 4px; }
+
+    #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); padding: 12px 18px; font-size: 0.82rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4); max-width: 320px;
+    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 999px; }
+    .loading { color: var(--text-muted); font-size: 0.82rem; padding: 20px; text-align: center; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <div class="header-left">
+      <div class="logo">⚡</div>
+      <div>
+        <h1>Cloud Resource <span>Allocation Engine</span></h1>
+        <div class="subtitle">Event Sourcing · Replay · Conflict Resolution · Utilization</div>
+      </div>
+    </div>
+    <div class="status-pill" id="status-pill">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Connecting…</span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="conflicts" role="tab">⚡ Conflicts</button>
+    <button class="tab" data-tab="timetravel" role="tab">🕐 Time Travel</button>
+    <button class="tab" data-tab="dashboard" role="tab">📊 Dashboard</button>
+  </nav>
+
+  <!-- CONFLICTS TAB -->
+  <section id="panel-conflicts" class="tab-panel active" role="tabpanel">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Conflict Resolution History</div>
+        <div class="panel-meta" id="conflicts-count">Loading…</div>
+      </div>
+      <div class="panel-body">
+        <div class="conflicts-scroll" id="conflicts-list">
+          <div class="loading">Loading audit decisions…</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIME TRAVEL TAB -->
+  <section id="panel-timetravel" class="tab-panel" role="tabpanel">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Time Travel State Viewer</div>
+        <div class="panel-meta">Reconstructs state via event replay (events ≤ timestamp)</div>
+      </div>
+      <div class="panel-body">
+        <div class="time-display" id="time-display">—</div>
+        <div class="time-controls">
+          <button class="btn primary" id="btn-play">▶ Play</button>
+          <button class="btn" id="btn-reset-time">↺ Reset to Start</button>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" class="time-slider" id="time-slider" min="0" max="100" value="100" disabled />
+          <div class="slider-labels">
+            <span id="slider-min">—</span>
+            <span id="slider-max">—</span>
+          </div>
+        </div>
+        <div id="timetravel-state">
+          <div class="loading">Move the slider to explore historical state…</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD TAB -->
+  <section id="panel-dashboard" class="tab-panel" role="tabpanel">
+    <div class="stats-row" id="dash-stats">
+      <div class="stat-card"><div class="stat-label">GPU Used</div><div class="stat-value" id="stat-gpu">—</div></div>
+      <div class="stat-card"><div class="stat-label">CPU Used</div><div class="stat-value" id="stat-cpu">—</div></div>
+      <div class="stat-card"><div class="stat-label">Memory Used</div><div class="stat-value" id="stat-mem">—</div></div>
+      <div class="stat-card"><div class="stat-label">Last Refresh</div><div class="stat-value" id="stat-refresh" style="font-size:0.95rem">—</div></div>
+    </div>
+
+    <div class="charts-grid" id="resource-charts">
+      <div class="chart-card"><div class="chart-title"><span class="rtype-badge rtype-GPU">GPU</span> Utilization</div><div id="chart-gpu"></div></div>
+      <div class="chart-card"><div class="chart-title"><span class="rtype-badge rtype-CPU">CPU</span> Utilization</div><div id="chart-cpu"></div></div>
+      <div class="chart-card"><div class="chart-title"><span class="rtype-badge rtype-memory">memory</span> Utilization</div><div id="chart-mem"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Region Utilization</div>
+        <div class="panel-meta">Sorted by utilization · refreshes every 5s</div>
+      </div>
+      <div class="panel-body" id="region-util-body">
+        <div class="loading">Loading utilization…</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  const API = window.location.origin;
+
+  // ── Utilities ─────────────────────────────────────────────
+  function toast(msg) {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  function setOnline(ok) {
+    document.getElementById('status-dot').className = 'status-dot ' + (ok ? 'alive' : 'dead');
+    document.getElementById('status-text').textContent = ok ? 'API Online' : 'API Offline';
+  }
+
+  function fmtISO(dt) {
+    if (!dt) return '—';
+    return new Date(dt).toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+  }
+
+  function fmtShort(dt) {
+    if (!dt) return '—';
+    const d = new Date(dt);
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+           d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function debounce(fn, ms) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+  }
+
+  function pctClass(p) {
+    return p >= 90 ? 'danger' : p >= 70 ? 'warn' : '';
+  }
+
+  function conflictBadgeClass(type) {
+    if (type === 'orphan_release') return 'badge-orphan';
+    if (type === 'over_allocation_attempt') return 'badge-over_alloc';
+    if (type === 'no_conflict') return 'badge-no_conflict';
+    return 'badge-overlap';
+  }
+
+  function conflictLabel(type) {
+    return {
+      overlap_same_region_resource: 'Overlap Conflict',
+      over_allocation_attempt: 'Over-Allocation',
+      orphan_release: 'Orphan Release',
+      no_conflict: 'No Conflict',
+    }[type] || type;
+  }
+
+  function renderStateTable(buckets, containerId) {
+    const el = document.getElementById(containerId);
+    if (!buckets || buckets.length === 0) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">🌐</div><p>No allocations at this point in time.</p></div>';
+      return;
+    }
+    const sorted = [...buckets].sort((a, b) =>
+      a.resource_type.localeCompare(b.resource_type) || a.region.localeCompare(b.region)
+    );
+    let html = `<table class="resource-table"><thead><tr>
+      <th>Resource Type</th><th>Region</th><th>Allocated Amount</th><th>Carbon Budget Used</th>
+    </tr></thead><tbody>`;
+    for (const b of sorted) {
+      html += `<tr>
+        <td><span class="rtype-badge rtype-${b.resource_type}">${b.resource_type}</span></td>
+        <td class="amount-cell" style="font-size:0.78rem;color:var(--text-dim)">${b.region}</td>
+        <td class="amount-cell">${b.allocated_amount.toFixed(1)}</td>
+        <td class="amount-cell">${b.carbon_budget_used.toFixed(0)}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    el.innerHTML = html;
+  }
+
+  // ── Tab navigation ────────────────────────────────────────
+  let dashboardInterval = null;
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+
+      if (tab.dataset.tab === 'dashboard') {
+        loadDashboard();
+        if (!dashboardInterval) dashboardInterval = setInterval(loadDashboard, 5000);
+      } else if (dashboardInterval) {
+        clearInterval(dashboardInterval);
+        dashboardInterval = null;
+      }
+
+      if (tab.dataset.tab === 'timetravel' && !timeRangeLoaded) initTimeTravel();
+      if (tab.dataset.tab === 'conflicts' && !conflictsLoaded) loadConflicts();
+    });
+  });
+
+  // ── FEATURE 2: Conflicts ────────────────────────────────
+  let conflictsLoaded = false;
+  const visualCache = {};
+
+  async function loadConflicts() {
+    const list = document.getElementById('conflicts-list');
+    try {
+      const resp = await fetch(`${API}/audit?limit=200`);
+      if (!resp.ok) throw new Error(resp.status);
+      const entries = await resp.json();
+      conflictsLoaded = true;
+      setOnline(true);
+
+      if (!entries.length) {
+        list.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No audit entries yet. Seed conflicting events to see resolutions.</p></div>';
+        document.getElementById('conflicts-count').textContent = '0 decisions';
+        return;
+      }
+
+      const sorted = [...entries].reverse();
+      document.getElementById('conflicts-count').textContent = `${sorted.length} decisions (newest first)`;
+
+      list.innerHTML = sorted.map(e => `
+        <div class="conflict-card" data-id="${e.decision_id}">
+          <div class="conflict-card-header" onclick="toggleConflict('${e.decision_id}')">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span class="conflict-badge ${conflictBadgeClass(e.conflict_type)}">${conflictLabel(e.conflict_type)}</span>
+              <span style="font-size:0.72rem;color:var(--text-muted);font-family:'JetBrains Mono',monospace">${fmtISO(e.decision_timestamp)}</span>
+            </div>
+            <span class="chevron">▼</span>
+          </div>
+          <div class="conflict-card-body" id="conflict-body-${e.decision_id}">
+            <div class="loading">Loading visualization…</div>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      setOnline(false);
+      list.innerHTML = '<div class="empty"><p>Failed to load audit log. Is the API running?</p></div>';
+    }
+  }
+
+  async function toggleConflict(decisionId) {
+    const card = document.querySelector(`.conflict-card[data-id="${decisionId}"]`);
+    const isOpen = card.classList.toggle('open');
+    if (!isOpen) return;
+
+    const body = document.getElementById(`conflict-body-${decisionId}`);
+    if (visualCache[decisionId]) {
+      body.innerHTML = visualCache[decisionId];
+      return;
+    }
+
+    try {
+      const resp = await fetch(`${API}/audit/${decisionId}/visual`);
+      if (!resp.ok) throw new Error(resp.status);
+      const data = await resp.json();
+      body.innerHTML = renderConflictVisual(data, decisionId);
+      visualCache[decisionId] = body.innerHTML;
+    } catch (e) {
+      body.innerHTML = '<div class="empty"><p>Failed to load visualization.</p></div>';
+    }
+  }
+
+  function renderConflictVisual(data, decisionId) {
+    const requests = data.requests || [];
+    const winner = data.winner_event_id;
+    const losers = requests.filter(r => r.event_id !== winner);
+    const winnerReq = requests.find(r => r.event_id === winner);
+
+    let diagramHtml = '<div class="conflict-diagram">';
+
+    if (requests.length >= 2) {
+      const left = requests[0];
+      const right = requests[1];
+      diagramHtml += `
+        <div class="diagram-row">
+          <div class="diagram-node ${left.event_id === winner ? 'winner' : 'loser'}" onclick="toggleEventDetail('${decisionId}-0')">
+            <div class="node-label">Request A</div>
+            <div class="node-meta">${left.user_id} · ${left.amount} ${left.resource_type}</div>
+            <div class="node-meta">P${left.priority} · CO₂ ${left.carbon_intensity}</div>
+          </div>
+          <span class="diagram-arrow">→</span>
+          <div class="diagram-conflict">⚡ Conflict</div>
+          <span class="diagram-arrow">←</span>
+          <div class="diagram-node ${right.event_id === winner ? 'winner' : 'loser'}" onclick="toggleEventDetail('${decisionId}-1')">
+            <div class="node-label">Request B</div>
+            <div class="node-meta">${right.user_id} · ${right.amount} ${right.resource_type}</div>
+            <div class="node-meta">P${right.priority} · CO₂ ${right.carbon_intensity}</div>
+          </div>
+        </div>`;
+    } else if (requests.length === 1) {
+      const r = requests[0];
+      diagramHtml += `
+        <div class="diagram-row">
+          <div class="diagram-node ${r.event_id === winner ? 'winner' : 'loser'}" onclick="toggleEventDetail('${decisionId}-0')">
+            <div class="node-label">Single Event</div>
+            <div class="node-meta">${r.action} · ${r.user_id}</div>
+          </div>
+          <span class="diagram-arrow">→</span>
+          <div class="diagram-conflict">${conflictLabel(data.conflict_type)}</div>
+        </div>`;
+    }
+
+    if (winnerReq) {
+      diagramHtml += `
+        <div class="diagram-winner-row">
+          <span class="diagram-arrow">↓</span>
+          <span class="diagram-winner-label">Winner</span>
+          <div class="diagram-node winner" onclick="toggleEventDetail('${decisionId}-win')">
+            <div class="node-label">🏆 ${winnerReq.user_id}</div>
+            <div class="node-meta">${winnerReq.event_id.slice(0, 20)}…</div>
+          </div>
+        </div>`;
+    } else if (data.conflict_type === 'orphan_release') {
+      diagramHtml += `
+        <div class="diagram-winner-row">
+          <span class="diagram-winner-label">No winner — release rejected</span>
+        </div>`;
+    }
+
+    diagramHtml += '</div>';
+
+    let detailsHtml = '';
+    requests.forEach((r, i) => {
+      detailsHtml += `<div class="event-detail" id="detail-${decisionId}-${i}">${JSON.stringify(r, null, 2)}</div>`;
+    });
+    if (winnerReq) {
+      detailsHtml += `<div class="event-detail" id="detail-${decisionId}-win">${JSON.stringify(winnerReq, null, 2)}</div>`;
+    }
+
+    return diagramHtml + detailsHtml + `
+      <div class="resolution-text">${data.resolution_reason || ''}</div>
+      <div class="resolution-detail">${data.reason_detail || ''}</div>
+      <p style="font-size:0.68rem;color:var(--text-muted);margin-top:10px">Click a request node to expand raw event details.</p>
+    `;
+  }
+
+  function toggleEventDetail(id) {
+    const el = document.getElementById('detail-' + id);
+    if (el) el.classList.toggle('open');
+  }
+
+  // ── FEATURE 1: Time Travel ────────────────────────────────
+  let timeRangeLoaded = false;
+  let minTs = null, maxTs = null;
+  let playInterval = null;
+  let currentSliderVal = 100;
+
+  const debouncedFetchState = debounce(fetchStateAt, 200);
+
+  async function initTimeTravel() {
+    try {
+      const resp = await fetch(`${API}/events/timerange`);
+      if (!resp.ok) throw new Error(resp.status);
+      const data = await resp.json();
+      setOnline(true);
+
+      if (!data.min_timestamp || !data.max_timestamp) {
+        document.getElementById('time-display').textContent = 'No events in log yet';
+        return;
+      }
+
+      minTs = new Date(data.min_timestamp).getTime();
+      maxTs = new Date(data.max_timestamp).getTime();
+      timeRangeLoaded = true;
+
+      const slider = document.getElementById('time-slider');
+      slider.disabled = false;
+      slider.value = 100;
+      currentSliderVal = 100;
+
+      document.getElementById('slider-min').textContent = fmtShort(data.min_timestamp);
+      document.getElementById('slider-max').textContent = fmtShort(data.max_timestamp);
+
+      updateTimeDisplay(100);
+      fetchStateAt(100);
+    } catch (e) {
+      setOnline(false);
+      document.getElementById('time-display').textContent = 'Failed to load timerange';
+    }
+  }
+
+  function sliderToTimestamp(val) {
+    const ratio = val / 100;
+    return new Date(minTs + ratio * (maxTs - minTs));
+  }
+
+  function updateTimeDisplay(val) {
+    const ts = sliderToTimestamp(val);
+    document.getElementById('time-display').textContent = fmtISO(ts.toISOString());
+  }
+
+  async function fetchStateAt(val) {
+    if (!minTs || !maxTs) return;
+    const ts = sliderToTimestamp(val ?? currentSliderVal);
+    const iso = ts.toISOString();
+    const container = document.getElementById('timetravel-state');
+    try {
+      const resp = await fetch(`${API}/state/at?timestamp=${encodeURIComponent(iso)}`);
+      if (!resp.ok) throw new Error(resp.status);
+      const data = await resp.json();
+      renderStateTable(data.buckets, 'timetravel-state');
+      setOnline(true);
+    } catch (e) {
+      container.innerHTML = '<div class="empty"><p>Failed to reconstruct state.</p></div>';
+    }
+  }
+
+  document.getElementById('time-slider').addEventListener('input', e => {
+    currentSliderVal = parseInt(e.target.value, 10);
+    updateTimeDisplay(currentSliderVal);
+    debouncedFetchState(currentSliderVal);
+  });
+
+  document.getElementById('btn-reset-time').addEventListener('click', () => {
+    stopPlay();
+    document.getElementById('time-slider').value = 0;
+    currentSliderVal = 0;
+    updateTimeDisplay(0);
+    fetchStateAt(0);
+  });
+
+  document.getElementById('btn-play').addEventListener('click', () => {
+    if (playInterval) { stopPlay(); return; }
+    if (!minTs || !maxTs) return;
+
+    const btn = document.getElementById('btn-play');
+    btn.textContent = '⏸ Pause';
+
+    if (currentSliderVal >= 100) {
+      document.getElementById('time-slider').value = 0;
+      currentSliderVal = 0;
+      updateTimeDisplay(0);
+      fetchStateAt(0);
+    }
+
+    playInterval = setInterval(() => {
+      currentSliderVal = Math.min(100, currentSliderVal + 2);
+      document.getElementById('time-slider').value = currentSliderVal;
+      updateTimeDisplay(currentSliderVal);
+      fetchStateAt(currentSliderVal);
+      if (currentSliderVal >= 100) stopPlay();
+    }, 300);
+  });
+
+  function stopPlay() {
+    if (playInterval) { clearInterval(playInterval); playInterval = null; }
+    document.getElementById('btn-play').textContent = '▶ Play';
+  }
+
+  // ── FEATURE 3: Dashboard ──────────────────────────────────
+  function renderResourceChart(rtype, data, elId, cls) {
+    const el = document.getElementById(elId);
+    const p = Math.min(100, data.percentage || 0);
+    el.innerHTML = `
+      <div class="chart-bar-wrap">
+        <div class="chart-bar-label">
+          <span>${data.allocated ?? 0} / ${data.capacity ?? 0}</span>
+          <span>${p.toFixed(1)}%</span>
+        </div>
+        <div class="chart-bar">
+          <div class="chart-bar-fill ${cls} ${pctClass(p)}" style="width:${p}%"></div>
+        </div>
+      </div>`;
+  }
+
+  async function loadDashboard() {
+    try {
+      const resp = await fetch(`${API}/state/summary`);
+      if (!resp.ok) throw new Error(resp.status);
+      const data = await resp.json();
+      setOnline(true);
+
+      const totals = data.resource_totals || {};
+      document.getElementById('stat-gpu').textContent = (totals.GPU?.percentage ?? 0).toFixed(1) + '%';
+      document.getElementById('stat-cpu').textContent = (totals.CPU?.percentage ?? 0).toFixed(1) + '%';
+      document.getElementById('stat-mem').textContent = (totals.memory?.percentage ?? 0).toFixed(1) + '%';
+      document.getElementById('stat-refresh').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      renderResourceChart('GPU', totals.GPU || {}, 'chart-gpu', 'gpu');
+      renderResourceChart('CPU', totals.CPU || {}, 'chart-cpu', 'cpu');
+      renderResourceChart('memory', totals.memory || {}, 'chart-mem', 'mem');
+
+      const regions = Object.entries(data.region_utilization || {})
+        .sort((a, b) => b[1] - a[1]);
+
+      const body = document.getElementById('region-util-body');
+      if (!regions.length) {
+        body.innerHTML = '<div class="empty"><p>No region data yet.</p></div>';
+        return;
+      }
+
+      let html = `<table class="region-table"><thead><tr>
+        <th>Region</th><th>Utilization</th><th>Percentage</th>
+      </tr></thead><tbody>`;
+      for (const [region, pct] of regions) {
+        const capped = Math.min(100, pct);
+        const cls = pctClass(capped);
+        html += `<tr>
+          <td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem">${region}</td>
+          <td>
+            <div class="progress-wrap">
+              <div class="progress-bar"><div class="progress-fill ${cls}" style="width:${Math.min(100, pct)}%"></div></div>
+            </div>
+          </td>
+          <td class="progress-pct">${pct.toFixed(1)}%</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+      body.innerHTML = html;
+    } catch (e) {
+      setOnline(false);
+    }
+  }
+
+  // ── Init ──────────────────────────────────────────────────
+  loadConflicts();
+</script>
+</body>
+</html>
