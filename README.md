@@ -93,14 +93,7 @@ taskkill /PID <pid> /F
 
 **License**
 - MIT — see LICENSE file if present.
-
------
-
-If you'd like, I can:
-- upload your local screenshots into `docs/screenshots/` for you (you must provide the image files), or
-- generate smaller annotated thumbnails for the README.
-
-To have me push the screenshots as well, upload the images (or place them in the repo) and tell me the filenames to use.
+- 
 # Event-Driven Conflict Resolution for Sustainable Cloud Resource Allocation
 
 A fully locally-deployable **event sourcing engine** that ingests asynchronous, possibly
